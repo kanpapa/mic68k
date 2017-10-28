@@ -10,10 +10,10 @@
 ;
 ; $000000-$00ffff RAM (32K x 2)
 ; $a00000-$a0ffff ROM (32K x 2)
-; $f00008         ACIA1
-; $f20008         ACIA2
-; $f40008         PIA
-; $f60008         PTM
+; $f00009         ACIA1
+; $f20009         ACIA2
+; $f40009         PIA
+; $f60009         PTM
 ;
 
 ; Terminal port
