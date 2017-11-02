@@ -3031,7 +3031,7 @@ QUICK  DC.B 'uick home, get back to start of RAM!',13,10,0
 HEX    DC.B 'ex dump memory',13,10,10
        DC.B 'ADDRESS  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F',0
 
-LOAD   DC.B 'oad Motorola s-record (accept s2 and s8) quit: ESC',13,10,0
+LOAD   DC.B 'oad Motorola s-record (accept s1,s2 and s8) quit: ESC',13,10,0
 
 NUMBER DC.B ' bytes loaded, ',0
 ERROR  DC.B ' records checksum error',13,10,0
@@ -3075,7 +3075,7 @@ X_FLAG     DC.B 'X=',0
 
 HELP_LIST DC.B ' monitor commands',13,10,10
 
-       DC.B 'A   About zBug V1.0.1',13,10
+       DC.B 'A   About zBug V1.0',13,10
        DC.B 'B   Boot from RAM [000000] -> SP [000004] ->PC',13,10
        DC.B 'C   Clear memory with 0x0000',13,10
        DC.B 'D   Disassemble machine code to mnemonic',13,10
