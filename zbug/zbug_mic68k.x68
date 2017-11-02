@@ -1,6 +1,8 @@
-; FILE NAME MIC68KMON.x68
-; zBug V1.0 for MIC68K by @kanpapa
+; FILE NAME zbug_mic68k.x68
+; zBug V1.0.1 for MIC68K by @kanpapa
 ; The source code was assembled using Easy68K 
+; V1.0 1st release
+; V1.0.1 Added function to Load Motorola S-record S1 format
 
 ;
 ; Original FILE NAME U68K.ASM 
@@ -41,6 +43,10 @@
 ; F40009        PIA (IC1)
 ; F80009        PTM (IC2)
 ;
+
+; Use EASy68k Simulator
+EASY68K_SIM	EQU 0		; set 0 to use ACIA1
+;EASY68K_SIM	EQU 1		; set 1 to use EASy68K Sim68K I/O  
 
 BIT_ESC      EQU 0              ; ESC BIT POSITION #0
 
@@ -1763,6 +1769,10 @@ NEXT18  BSR NEW_LINE
       BSR SEND_TITLE
       bra loop
 
+; CONSOLE IS ACIA1
+
+	  IFEQ	EASY68K_SIM
+		
 ; INIT ACIA
 
 INIT_ACIA  MOVE.B #3,ACIAC.L   ; RESET ACIA
@@ -1788,6 +1798,44 @@ CIN      BTST.B #RDRF,ACIAC.L
          MOVE.B ACIAD.L,D0
          BSR COUT
          RTS
+
+	ENDC
+
+; CONSOLE IS EASy68K Sim68K I/O
+
+	IFNE	EASY68K_SIM
+
+INIT_ACIA  ;Keyboard Echo.
+           ;D1.B = 0 to turn off keyboard echo.
+           ;D1.B = non zero to enable it (default).
+           ;Echo is restored on 'Reset' or when a new file is loaded.
+           MOVE.B #0,D1
+           MOVE.B #12,D0
+           TRAP #15
+           RTS
+
+COUT      MOVEM.L D0-D1,-(SP)  ; SAVE D1
+          MOVE.B D0,D1
+          MOVE.B #6,D0
+          TRAP #15
+          MOVEM.L (SP)+,D0-D1 ; RESTORE D1
+          RTS
+
+
+CINS      MOVE.L D1,-(SP)  ; SAVE D1
+          MOVE.B #5,D0
+          TRAP #15
+          MOVE.B D1,D0  ;ACIAD.L,D0
+          MOVE.L (SP)+,D1 ; RESTORE D1
+          RTS
+
+
+CIN       BSR CINS
+          BSR COUT
+          RTS
+
+         ENDC
+
 
 ; A3 POINTED TO FIRST BYTE
 ; END WITH 0
@@ -1917,7 +1965,7 @@ GET_TYPE        BSR CINS
                 BNE CHECK_START
 
 WAIT_CR         BSR CINS
-                CMP.B #LF,D0
+                CMP.B #CR,D0
                 BNE.S WAIT_CR
 
                 BSR NEW_LINE
@@ -1936,12 +1984,15 @@ WAIT_CR         BSR CINS
                 RTS
 
 
-CHECK_START     CMP.B #'2',D0
-                BEQ.S START_FOUND
+CHECK_START     CMP.B #'2',D0	; CHECK S2 RECORD
+                BEQ.S READ_S2
 
-                CMP.B #'0',D0
-                BEQ.S READ_S_REC1
-                BRA.S READ_S_REC1
+                CMP.B #'1',D0	; CHECK S1 RECORD
+                BEQ.S READ_S1
+
+                CMP.B #'0',D0	; CHECK S0 RECORD
+                BEQ.S READ_S_REC1	; SKIP DATA
+                BRA.S READ_S_REC1	; SKIP DATA
 
 
 START_FOUND     CLR.W D5          ; CLEAR BYTE CHECK SUM
@@ -1949,10 +2000,39 @@ START_FOUND     CLR.W D5          ; CLEAR BYTE CHECK SUM
                 BSR GET_HEXS
                 CLR.L D7
                 MOVE.B D1,D7       ; NUMBER OF BYTE SAVED TO D7
-                SUBQ.B #5,D7
-                MOVE.L D7,D0
+                ;SUBQ.B #5,D7
+                ;MOVE.L D7,D0
 
                 ADD.B  D1,D5       ; ADD CHECK SUM
+		RTS
+
+;S1 (2 BYTE ADDRESS)
+READ_S1		BSR START_FOUND
+
+              SUBQ.B #4,D7
+              MOVE.L D7,D0
+
+; GET 16-BIT ADDRESS, SAVE TO A6
+
+              CLR.L D6
+              BSR GET_HEXS
+              MOVE.B D1,D6
+              ADD.B  D1,D5          ; ADD CHECK SUM
+
+              ROL.L #8,D6
+              BSR GET_HEXS
+              MOVE.B D1,D6
+              ADD.B D1,D5           ; ADD CHECK SUM
+
+              MOVEA.L D6,A6
+              BRA READ_DATA           
+
+
+;S2 (3 BYTE ADDRESS)
+READ_S2       BSR START_FOUND                
+
+              SUBQ.B #5,D7
+              MOVE.L D7,D0
 
 ; GET 24-BIT ADDRESS, SAVE TO A6
 
@@ -2930,8 +3010,8 @@ VECTABLE  DC.L  SERVICE_BUSERROR     ; 2 Bus error
           DC.L  SERVICE_TRAP0    ; 47 TRAP #15
 ;----------------------- STRING CONSTANT -------------------------------------
 
-TITLE  DC.B 13,10,'zBug V1.0 for MIC68K',13,10,0
-TITLE1 DC.B 13,10,'zBug V1.0 for MIC68K (press ? for help)',13,10,0
+TITLE  DC.B 13,10,'zBug V1.0.1 for MIC68K',13,10,0
+TITLE1 DC.B 13,10,'zBug V1.0.1 for MIC68K (press ? for help)',13,10,0
 
 PROMPT DC.B '>',0
 
@@ -2969,7 +3049,7 @@ STRING1 DC.B '  DFL ',0
 
 ABOUTZBUG DC.B 'bout zBuG V1.0',13,10,10
           DC.B 'zBug V1.0 Copyright (C) 2002 W.SIRICHOTE',13,10,10
-          DC.B 'MIC68K Version by @kanpapa',13,10,0
+          DC.B 'zBug V1.0.1 MIC68K Version by @kanpapa',13,10,0
 
 TRACE_MSG DC.B 'race instruction',0
 
@@ -2995,7 +3075,7 @@ X_FLAG     DC.B 'X=',0
 
 HELP_LIST DC.B ' monitor commands',13,10,10
 
-       DC.B 'A   About zBug V1.0',13,10
+       DC.B 'A   About zBug V1.0.1',13,10
        DC.B 'B   Boot from RAM [000000] -> SP [000004] ->PC',13,10
        DC.B 'C   Clear memory with 0x0000',13,10
        DC.B 'D   Disassemble machine code to mnemonic',13,10
